@@ -13,7 +13,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*') // Ou l'adresse spécifique de votre front
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS') // Ajout des méthodes autorisées
-    next();
+    next()
 })
 
 app.use(express.json())

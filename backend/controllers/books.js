@@ -77,7 +77,6 @@ exports.modifyOneThing = (req, res, next) => {
 		...JSON.parse(req.body.book),
 		imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
 	} : { ...req.body }
-	console.log(`${req.protocol}://${req.get('host')}/images/${req.file.filename}`)
 
 	delete thingObject._userId
 	delete thingObject._id
@@ -89,14 +88,12 @@ exports.modifyOneThing = (req, res, next) => {
 			} else {
 				// Supprimer l'ancienne image si une nouvelle image a été envoyée
 				if (req.file && thing.imageUrl) {
-					const oldImage = thing.imageUrl.split('/images/')[1];
+					const oldImage = thing.imageUrl.split('/images/')[1]
 					fs.unlink(`images/${oldImage}`, (err) => {
 						if (err) {
-							console.log('Erreur lors de la suppression de l\'ancienne image:', err);
-						} else {
-							console.log('Ancienne image supprimée avec succès');
+							console.log('Erreur lors de la suppression de l\'ancienne image:', err)
 						}
-					});
+					})
 				}
 				Book.updateOne({ _id: req.params.id }, { ...thingObject, _id: req.params.id })
 					.then(() => res.status(200).json({ message: 'Objet modifié !' }))
