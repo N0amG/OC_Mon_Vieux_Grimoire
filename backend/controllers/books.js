@@ -31,23 +31,28 @@ exports.getOneThing = (req, res, next) => {
 }
 
 // Add a rating
-exports.rateOneThing = (req, res, next) => {
+exports.rateOneThing = (req, res) => {
 	const newRating = { userId: req.auth.userId, grade: req.body.rating }
-	Book.findByIdAndUpdate(
-		req.params.id,
-		[{
-			$set: {
-				ratings: { $concatArrays: ['$ratings', [newRating]] }, // Ajout de la nouvelle note
-				averageRating: {
-					$round: [{ $avg: { $concatArrays: ['$ratings.grade', [newRating.grade]] } }, 2]
-				}
-			}
-		}],
-		{ new: true, runValidators: true }
-	)
+
+	Book.findById(req.params.id)
 		.then(book => {
 			if (!book) return res.status(404).json({ error: 'Book not found' })
-			res.status(200).json(book)
+
+			// Vérifier si l'utilisateur a déjà voté
+			const hasAlreadyRated = book.ratings.some(rating => rating.userId === req.auth.userId)
+			if (hasAlreadyRated) {
+				return res.status(403).json({ error: 'User has already rated this book' })
+			}
+
+			// Ajouter la nouvelle note
+			book.ratings.push(newRating)
+			book.averageRating = parseFloat(
+				(book.ratings.reduce((sum, rating) => sum + rating.grade, 0) / book.ratings.length).toFixed(2)
+			)
+
+			book.save()
+				.then(updatedBook => res.status(200).json(updatedBook))
+				.catch(error => res.status(400).json({ error }))
 		})
 		.catch(error => res.status(400).json({ error }))
 }
