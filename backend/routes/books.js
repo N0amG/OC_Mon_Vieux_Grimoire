@@ -8,8 +8,8 @@ router.post('/', auth, multer, booksCtrl.createOneThing)
 router.get('/', booksCtrl.getAllThings)
 router.get('/bestrating', booksCtrl.getBestRateThings)
 router.post('/:id/rating', auth, booksCtrl.rateOneThing)
+router.delete('/:id', auth, booksCtrl.deleteOneThing)
 router.get('/:id', booksCtrl.getOneThing)
 router.put('/:id', auth, multer, booksCtrl.modifyOneThing)
-router.delete('/:id', auth, booksCtrl.deleteOneThing)
 
 module.exports = router

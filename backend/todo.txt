@@ -1,0 +1,2 @@
+verifications des requete avec des éléments vides
+.env avec toutes les variables,

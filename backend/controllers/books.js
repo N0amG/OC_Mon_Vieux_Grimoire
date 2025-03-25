@@ -1,8 +1,47 @@
 const Book = require('../models/Book')
 const fs = require('fs')
 
+function isRequestValid(req) {
+    let isValid = true
+    let book = req.body.book ? JSON.parse(req.body.book) : req.body // Gère les 2 formats
+    console.log("Initial data - book:", book, ", file:", req.file)
+
+    if (!book) {
+        console.log("Erreur: book est undefined.")
+        return false
+    }
+
+    if (req.method === 'POST') {
+        if (!book || !req.file) {
+            isValid = false
+        } else if (!book.userId || !book.title || !book.author || !book.year || !book.genre ||
+            !book.ratings || !book.averageRating) {
+            isValid = false
+        }
+    } else { 
+        // Pour PUT : On doit recevoir soit un fichier, soit un objet `book`
+        if (!book && !req.file) {
+            isValid = false
+        } else if (book) {
+            if (!book.userId || !book.title || !book.author || !book.year || !book.genre) {
+                isValid = false
+            }
+        }
+    }
+
+    if (!isValid && req.file) {
+        fs.unlink(`images/${req.file.filename}`, () => { })
+    }
+
+    console.log('isValid:', isValid)
+    return isValid
+}
+
 // Create a new book
 exports.createOneThing = (req, res, next) => {
+	if (!isRequestValid(req)) {
+		return res.status(400).json({ error: 'Missing book data' })
+	}
 	const thingObject = JSON.parse(req.body.book)
 	delete thingObject._id
 	delete thingObject._userId
@@ -31,7 +70,7 @@ exports.getOneThing = (req, res, next) => {
 }
 
 // Add a rating
-exports.rateOneThing = (req, res) => {
+exports.rateOneThing = (req, res, next) => {
 	const newRating = { userId: req.auth.userId, grade: req.body.rating }
 
 	Book.findById(req.params.id)
@@ -49,9 +88,10 @@ exports.rateOneThing = (req, res) => {
 			book.averageRating = parseFloat(
 				(book.ratings.reduce((sum, rating) => sum + rating.grade, 0) / book.ratings.length).toFixed(2)
 			)
-
 			book.save()
-				.then(updatedBook => res.status(200).json(updatedBook))
+				.then(updatedBook => {
+					res.status(200).json(updatedBook)
+				})
 				.catch(error => res.status(400).json({ error }))
 		})
 		.catch(error => res.status(400).json({ error }))
@@ -78,37 +118,53 @@ exports.getBestRateThings = (req, res, next) => {
 
 // Modify one book
 exports.modifyOneThing = (req, res, next) => {
-	const thingObject = req.file ? {
-		...JSON.parse(req.body.book),
-		imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-	} : { ...req.body }
+	console.log("REQ BODY: ", req.body)
+	console.log("REQ FILE: ", req.file)
+
+	if (!isRequestValid(req)) {
+		return res.status(400).json({ error: 'Missing book data' })
+	}
+
+	// Gérer le format des données : book en string ou directement dans req.body
+	let bookData = req.body.book ? JSON.parse(req.body.book) : req.body
+
+	console.log("BOOK DATA PARSED:", bookData)
+
+	const thingObject = req.file
+		? { ...bookData, imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` }
+		: { ...bookData }
 
 	delete thingObject._userId
 	delete thingObject._id
 
 	Book.findOne({ _id: req.params.id })
 		.then(thing => {
-			if (thing.userId != req.auth.userId) {
+			if (!thing) {
+				return res.status(404).json({ message: "Livre non trouvé" })
+			}
+
+			if (thing.userId !== req.auth.userId) {
 				return res.status(401).json({ message: 'Non-autorisé' })
 			} else {
-				// Supprimer l'ancienne image si une nouvelle image a été envoyée
+				// Supprimer l'ancienne image si une nouvelle est uploadée
 				if (req.file && thing.imageUrl) {
 					const oldImage = thing.imageUrl.split('/images/')[1]
-					fs.unlink(`images/${oldImage}`, (err) => {
-						if (err) {
-							console.log('Erreur lors de la suppression de l\'ancienne image:', err)
-						}
+					fs.unlink(`images/${oldImage}`, err => {
+						if (err) console.log('Erreur lors de la suppression de l\'ancienne image:', err)
 					})
 				}
+
+				// Mettre à jour le livre
 				Book.updateOne({ _id: req.params.id }, { ...thingObject, _id: req.params.id })
 					.then(() => res.status(200).json({ message: 'Objet modifié !' }))
 					.catch(error => res.status(400).json({ error }))
 			}
 		})
-		.catch(error => res.status(400).json({ error }))
+		.catch(error => res.status(500).json({ error }))
 }
 
 exports.deleteOneThing = (req, res, next) => {
+	console.log("DELETE ONE THING")
 	Book.findOne({ _id: req.params.id })
 		.then(thing => {
 			if (thing.userId != req.auth.userId) {
