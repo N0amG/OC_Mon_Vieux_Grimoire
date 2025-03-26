@@ -2,45 +2,44 @@ const Book = require('../models/Book')
 const fs = require('fs')
 
 function isRequestValid(req) {
-    let isValid = true
-    let book = req.body.book ? JSON.parse(req.body.book) : req.body // Gère les 2 formats
-    console.log("Initial data - book:", book, ", file:", req.file)
+	let isValid = true
+	let book = req.body.book ? JSON.parse(req.body.book) : req.body // Gère les 2 formats
 
-    if (!book) {
-        console.log("Erreur: book est undefined.")
-        return false
-    }
+	if (!book) {
+		("Erreur: book est undefined.")
+		return false
+	}
 
-    if (req.method === 'POST') {
-        if (!book || !req.file) {
-            isValid = false
-        } else if (!book.userId || !book.title || !book.author || !book.year || !book.genre ||
-            !book.ratings || !book.averageRating) {
-            isValid = false
-        }
-    } else { 
-        // Pour PUT : On doit recevoir soit un fichier, soit un objet `book`
-        if (!book && !req.file) {
-            isValid = false
-        } else if (book) {
-            if (!book.userId || !book.title || !book.author || !book.year || !book.genre) {
-                isValid = false
-            }
-        }
-    }
+	if (req.method === 'POST') {
+		if (!book || !req.file) {
+			isValid = false
+		} else if ((!book.userId || !book.title || !book.author || !book.year || !book.genre
+			|| !book.ratings || !book.averageRating) || (!parseInt(book.year) || !Array.isArray(book.ratings)
+				|| !parseFloat(book.averageRating) || book.ratings.length === 0 || !parseInt(book.ratings[0].grade)
+				|| parseInt(book.ratings[0].grade) > 5 || parseInt(book.ratings[0].grade) <= 0)) {
+			isValid = false
+		}
+	} else {
+		// Pour PUT : On doit recevoir soit un fichier, soit un objet `book`
+		if (!book && !req.file) {
+			isValid = false
+		} else if (book) {
+			if (!book.userId || !book.title || !book.author || !book.year || !book.genre) {
+				isValid = false
+			}
+		}
+	}
 
-    if (!isValid && req.file) {
-        fs.unlink(`images/${req.file.filename}`, () => { })
-    }
-
-    console.log('isValid:', isValid)
-    return isValid
+	if (!isValid && req.file) {
+		fs.unlink(`images/${req.file.filename}`, () => { })
+	}
+	return isValid
 }
 
 // Create a new book
 exports.createOneThing = (req, res, next) => {
 	if (!isRequestValid(req)) {
-		return res.status(400).json({ error: 'Missing book data' })
+		return res.status(400).json({ error: 'Missing or Invalid book data' })
 	}
 	const thingObject = JSON.parse(req.body.book)
 	delete thingObject._id
@@ -52,7 +51,12 @@ exports.createOneThing = (req, res, next) => {
 	})
 	thing.save()
 		.then(() => res.status(201).json({ message: 'Objet enregistré !' }))
-		.catch((error) => { res.status(400).json({ error }) })
+		.catch((error) => {
+			if (req.file) {
+				fs.unlink(`images/${req.file.filename}`, () => { })
+			}
+			res.status(400).json({ error: "Certaines données ont un format invalide" })
+		})
 }
 
 // Get all books
@@ -118,8 +122,7 @@ exports.getBestRateThings = (req, res, next) => {
 
 // Modify one book
 exports.modifyOneThing = (req, res, next) => {
-	console.log("REQ BODY: ", req.body)
-	console.log("REQ FILE: ", req.file)
+
 
 	if (!isRequestValid(req)) {
 		return res.status(400).json({ error: 'Missing book data' })
@@ -127,8 +130,6 @@ exports.modifyOneThing = (req, res, next) => {
 
 	// Gérer le format des données : book en string ou directement dans req.body
 	let bookData = req.body.book ? JSON.parse(req.body.book) : req.body
-
-	console.log("BOOK DATA PARSED:", bookData)
 
 	const thingObject = req.file
 		? { ...bookData, imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` }
@@ -149,9 +150,7 @@ exports.modifyOneThing = (req, res, next) => {
 				// Supprimer l'ancienne image si une nouvelle est uploadée
 				if (req.file && thing.imageUrl) {
 					const oldImage = thing.imageUrl.split('/images/')[1]
-					fs.unlink(`images/${oldImage}`, err => {
-						if (err) console.log('Erreur lors de la suppression de l\'ancienne image:', err)
-					})
+					fs.unlink(`images/${oldImage}`, () => { })
 				}
 
 				// Mettre à jour le livre
@@ -164,7 +163,6 @@ exports.modifyOneThing = (req, res, next) => {
 }
 
 exports.deleteOneThing = (req, res, next) => {
-	console.log("DELETE ONE THING")
 	Book.findOne({ _id: req.params.id })
 		.then(thing => {
 			if (thing.userId != req.auth.userId) {
