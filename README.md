@@ -22,7 +22,7 @@ Mon Vieux Grimoire est une application permettant d'ajouter des livres, de les n
 
 ### 2️⃣ Installer les dépendances
 ```bash
-npm install
+npm install --force
 ```
 
 ### 3️⃣ Configuration du fichier `.env`
@@ -39,10 +39,13 @@ JWT_TOKEN_SECRET='<votre_secret>'
 ```bash
 node server.js
 ```
+laisser ouvert le terminale tant que l'app est utilisé
 
 ### 5️⃣ Démarrer le front-end
+Ouvrir dnas une nouvelle fenêtre
 ```bash
-cd ../frontend/
+cd frontend/
+npm install
 npm run start
 ```
 
