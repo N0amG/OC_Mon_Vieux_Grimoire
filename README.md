@@ -84,4 +84,3 @@ backend/
 
 ---
 🚀 **Projet développé par Noam Guez**
-
