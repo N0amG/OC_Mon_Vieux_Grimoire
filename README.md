@@ -32,6 +32,7 @@ MONGODB_URI='mongodb://<votre_url_mongo>'
 PORT='4000'
 JWT_TOKEN_SECRET='<votre_secret>'
 ```
+- L'application front écoute sur le port 4000 par défaut
 - Si vous utilisez une base locale, modifiez `MONGODB_URI` en conséquence.
 - Il est recommandé de modifier `JWT_TOKEN_SECRET`.
 
