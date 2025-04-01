@@ -17,7 +17,7 @@ Mon Vieux Grimoire est une application permettant d'ajouter des livres, de les n
 ### 1️⃣ Cloner le projet
 ```bash
  git clone https://github.com/N0amG/OC_Mon_Vieux_Grimoire
- cd backend/
+ cd OC_Mon_Vieux_Grimoire/backend/
 ```
 
 ### 2️⃣ Installer les dépendances
